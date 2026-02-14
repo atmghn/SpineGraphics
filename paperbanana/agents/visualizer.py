@@ -65,9 +65,13 @@ class VisualizerAgent(BaseAgent):
             Path to the generated image.
         """
         if diagram_type == DiagramType.STATISTICAL_PLOT:
-            return await self._generate_plot(description, raw_data, output_path, iteration)
+            return await self._generate_plot(
+                description, raw_data, output_path, iteration
+            )
         else:
-            return await self._generate_diagram(description, output_path, iteration, seed)
+            return await self._generate_diagram(
+                description, output_path, iteration, seed
+            )
 
     async def _generate_diagram(
         self,
@@ -109,7 +113,9 @@ class VisualizerAgent(BaseAgent):
         if raw_data:
             import json
 
-            full_description += f"\n\n## Raw Data\n```json\n{json.dumps(raw_data, indent=2)}\n```"
+            full_description += (
+                f"\n\n## Raw Data\n```json\n{json.dumps(raw_data, indent=2)}\n```"
+            )
 
         # Load and format the plot visualizer prompt template
         template = self.load_prompt("plot")
@@ -157,7 +163,9 @@ class VisualizerAgent(BaseAgent):
         # Strip any OUTPUT_PATH assignments from VLM-generated code so the
         # injected value below is authoritative (the VLM is prompted to set
         # OUTPUT_PATH itself, which would override the injected line).
-        code = re.sub(r'^OUTPUT_PATH\s*=\s*["\'].*["\']\s*$', "", code, flags=re.MULTILINE)
+        code = re.sub(
+            r'^OUTPUT_PATH\s*=\s*["\'].*["\']\s*$', "", code, flags=re.MULTILINE
+        )
 
         # Inject the output path
         full_code = f'OUTPUT_PATH = "{output_path}"\n{code}'

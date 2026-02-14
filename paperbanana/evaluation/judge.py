@@ -94,7 +94,9 @@ class VLMJudge:
             overall_score=overall_score,
         )
 
-    def _load_eval_prompt(self, dimension: str, source_context: str, caption: str) -> str:
+    def _load_eval_prompt(
+        self, dimension: str, source_context: str, caption: str
+    ) -> str:
         """Load evaluation prompt for a specific dimension."""
         prompt_path = self.prompt_dir / "evaluation" / f"{dimension}.txt"
         if not prompt_path.exists():

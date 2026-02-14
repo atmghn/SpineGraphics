@@ -17,7 +17,9 @@ class ProviderRegistry:
     def create_vlm(settings: Settings) -> VLMProvider:
         """Create a VLM provider based on settings."""
         provider = settings.vlm_provider.lower()
-        logger.info("Creating VLM provider", provider=provider, model=settings.vlm_model)
+        logger.info(
+            "Creating VLM provider", provider=provider, model=settings.vlm_model
+        )
 
         if provider == "gemini":
             from paperbanana.providers.vlm.gemini import GeminiVLM
@@ -34,13 +36,17 @@ class ProviderRegistry:
                 model=settings.vlm_model,
             )
         else:
-            raise ValueError(f"Unknown VLM provider: {provider}. Available: gemini, openrouter")
+            raise ValueError(
+                f"Unknown VLM provider: {provider}. Available: gemini, openrouter"
+            )
 
     @staticmethod
     def create_image_gen(settings: Settings) -> ImageGenProvider:
         """Create an image generation provider based on settings."""
         provider = settings.image_provider.lower()
-        logger.info("Creating image gen provider", provider=provider, model=settings.image_model)
+        logger.info(
+            "Creating image gen provider", provider=provider, model=settings.image_model
+        )
 
         if provider == "google_imagen":
             from paperbanana.providers.image_gen.google_imagen import GoogleImagenGen
@@ -50,7 +56,9 @@ class ProviderRegistry:
                 model=settings.image_model,
             )
         elif provider == "openrouter_imagen":
-            from paperbanana.providers.image_gen.openrouter_imagen import OpenRouterImageGen
+            from paperbanana.providers.image_gen.openrouter_imagen import (
+                OpenRouterImageGen,
+            )
 
             return OpenRouterImageGen(
                 api_key=settings.openrouter_api_key,

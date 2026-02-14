@@ -172,7 +172,7 @@ class PaperBananaPipeline:
             GenerationOutput with final image and metadata.
         """
         total_start = time.perf_counter()
-        
+
         logger.info(
             "Starting generation",
             run_id=self.run_id,
@@ -243,7 +243,9 @@ class PaperBananaPipeline:
         iteration_timings = []
 
         for i in range(self.settings.refinement_iterations):
-            logger.info(f"Phase 2: Iteration {i + 1}/{self.settings.refinement_iterations}")
+            logger.info(
+                f"Phase 2: Iteration {i + 1}/{self.settings.refinement_iterations}"
+            )
 
             # Step 4: Visualizer — generate image
             visualizer_start = time.perf_counter()
@@ -272,11 +274,13 @@ class PaperBananaPipeline:
                 image_path=image_path,
                 critique=critique,
             )
-            iteration_timings.append({
-                "iteration": i + 1,
-                "visualizer_seconds": visualizer_seconds,
-                "critic_seconds": critic_seconds,
-            })
+            iteration_timings.append(
+                {
+                    "iteration": i + 1,
+                    "visualizer_seconds": visualizer_seconds,
+                    "critic_seconds": critic_seconds,
+                }
+            )
             iterations.append(iteration_record)
 
             # Save iteration artifacts
@@ -314,7 +318,7 @@ class PaperBananaPipeline:
         import shutil
 
         shutil.copy2(final_image, final_output_path)
-        
+
         total_seconds = time.perf_counter() - total_start
         logger.info(
             "Total generation time",
@@ -333,7 +337,7 @@ class PaperBananaPipeline:
             refinement_iterations=len(iterations),
             config_snapshot=self.settings.model_dump(exclude={"google_api_key"}),
         )
-        
+
         metadata_dict = metadata.model_dump()
 
         metadata_dict["timing"] = {
@@ -348,11 +352,11 @@ class PaperBananaPipeline:
             save_json(metadata_dict, self._run_dir / "metadata.json")
 
         output = GenerationOutput(
-                image_path=final_output_path,
-                description=current_description,
-                iterations=iterations,
-                metadata=metadata_dict,
-            )
+            image_path=final_output_path,
+            description=current_description,
+            iterations=iterations,
+            metadata=metadata_dict,
+        )
 
         logger.info(
             "Generation complete",

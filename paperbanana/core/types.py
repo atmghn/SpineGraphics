@@ -18,8 +18,12 @@ class DiagramType(str, Enum):
 class GenerationInput(BaseModel):
     """Input to the PaperBanana generation pipeline."""
 
-    source_context: str = Field(description="Methodology section text or relevant paper excerpt")
-    communicative_intent: str = Field(description="Figure caption describing what to communicate")
+    source_context: str = Field(
+        description="Methodology section text or relevant paper excerpt"
+    )
+    communicative_intent: str = Field(
+        description="Figure caption describing what to communicate"
+    )
     diagram_type: DiagramType = Field(default=DiagramType.METHODOLOGY)
     raw_data: Optional[dict[str, Any]] = Field(
         default=None, description="Raw data for statistical plots (CSV path or dict)"

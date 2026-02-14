@@ -13,7 +13,9 @@ def format_scores(scores: EvaluationScore) -> str:
     for dim in DIMENSIONS:
         result = getattr(scores, dim)
         lines.append(f"{dim.capitalize():14s} {result.winner:16s} ({result.score:.0f})")
-    lines.append(f"{'Overall':14s} {scores.overall_winner:16s} ({scores.overall_score:.0f})")
+    lines.append(
+        f"{'Overall':14s} {scores.overall_winner:16s} ({scores.overall_score:.0f})"
+    )
     return "\n".join(lines)
 
 
