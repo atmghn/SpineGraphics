@@ -8,8 +8,8 @@ import stripe
 from datetime import datetime, timedelta
 
 # Import PaperBanana
-from paperbanana import PaperBananaPipeline, GenerationInput, DiagramType
-from paperbanana.core.config import Settings
+# from paperbanana import PaperBananaPipeline, GenerationInput, DiagramType  # These might not be exported at top level
+# from paperbanana.core.config import Settings  # Might not exist at this path
 
 # ============================================================================
 # PAGE CONFIG
