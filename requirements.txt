@@ -1,0 +1,5 @@
+streamlit==1.28.1
+stripe==7.4.0
+Pillow==10.1.0
+git+https://github.com/llmsresearch/paperbanana.git
+google-generativeai>=0.3.0
