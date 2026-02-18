@@ -59,7 +59,7 @@ STRIPE_PRODUCTS = {
 # PAPERBANANA PIPELINE
 # ============================================================================
 
-    pipeline = None  # PaperBanana imports are disabled for now
+pipeline = None  # PaperBanana imports are disabled for now
 
 # ============================================================================
 # SESSION STATE INITIALIZATION
