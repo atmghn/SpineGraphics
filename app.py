@@ -58,9 +58,9 @@ STRIPE_PRODUCTS = {
 # ============================================================================
 # PAPERBANANA PIPELINE
 # ============================================================================
-"""
-@st.cache_resource
-def get_pipeline():
+
+# @st.cache_resource
+# def get_pipeline():
     """Cache PaperBanana Pipeline"""
     settings = Settings(
         vlm_provider="gemini",
@@ -75,7 +75,7 @@ except Exception as e:
     st.error(f"❌ Fehler beim Laden der PaperBanana Pipeline: {str(e)}")
     st.info("Stelle sicher, dass deine Gemini API Key und Google Imagen Provider konfiguriert sind.")
     pipeline = None
-    """
+    
     pipeline = None  # PaperBanana imports are disabled for now
 
 # ============================================================================
