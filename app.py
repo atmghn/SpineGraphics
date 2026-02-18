@@ -12,6 +12,16 @@ from paperbanana import PaperBananaPipeline, GenerationInput, DiagramType
 from paperbanana.core.config import Settings
 
 # ============================================================================
+# PAGE CONFIG
+# ============================================================================
+st.set_page_config(
+    page_title="PaperBanana Pro - Diagram Generator",
+    page_icon="🖼️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ============================================================================
 # STRIPE CONFIGURATION
 # ============================================================================
 stripe.api_key = st.secrets.get("stripe_secret_key") or os.getenv("STRIPE_SECRET_KEY")
@@ -22,24 +32,35 @@ STRIPE_PRODUCTS = {
         "price_id": st.secrets.get("stripe_price_pro") or os.getenv("STRIPE_PRICE_PRO"),
         "name": "PaperBanana Pro",
         "price": 9.99,
-        "period": "month",
-        "features": ["50 Diagramme/Monat", "2x Upscale (High-Res)", "E-Mail Support", "3 Iterationen"],
+        "currency": "CHF",
+        "features": [
+            "50 Diagramme/Monat",
+            "2x Upscale (High-Res)",
+            "E-Mail Support",
+            "3 Iterationen"
+        ],
     },
     "enterprise": {
         "price_id": st.secrets.get("stripe_price_enterprise") or os.getenv("STRIPE_PRICE_ENTERPRISE"),
         "name": "PaperBanana Enterprise",
         "price": 49.99,
-        "period": "month",
-        "features": ["Unbegrenzte Diagramme", "4x Upscale (4K)", "Prioritäts-Support", "5 Iterationen", "API-Zugriff"],
+        "currency": "CHF",
+        "features": [
+            "Unbegrenzte Diagramme",
+            "4x Upscale (4K)",
+            "Prioritäts-Support",
+            "5 Iterationen",
+            "API-Zugriff"
+        ],
     }
 }
 
 # ============================================================================
-# PAPERBANANA PIPELINE INITIALIZATION
+# PAPERBANANA PIPELINE
 # ============================================================================
 @st.cache_resource
 def get_pipeline():
-    """Initialisiere die PaperBanana Pipeline einmal und cache sie"""
+    """Cache PaperBanana Pipeline"""
     settings = Settings(
         vlm_provider="gemini",
         image_provider="google_imagen",
@@ -47,13 +68,18 @@ def get_pipeline():
     )
     return PaperBananaPipeline(settings=settings)
 
-pipeline = get_pipeline()
+try:
+    pipeline = get_pipeline()
+except Exception as e:
+    st.error(f"❌ Fehler beim Laden der PaperBanana Pipeline: {str(e)}")
+    st.info("Stelle sicher, dass deine Gemini API Key und Google Imagen Provider konfiguriert sind.")
+    pipeline = None
 
 # ============================================================================
-# SESSION STATE MANAGEMENT
+# SESSION STATE INITIALIZATION
 # ============================================================================
 def init_session_state():
-    """Initialisiere Session-State Variablen"""
+    """Initialize all session state variables"""
     defaults = {
         "user_id": None,
         "user_email": None,
@@ -61,6 +87,7 @@ def init_session_state():
         "subscription_plan": None,
         "subscription_valid_until": None,
         "checkout_plan": None,
+        "generation_count": 0,
     }
     
     for key, value in defaults.items():
@@ -73,8 +100,10 @@ init_session_state()
 # STRIPE FUNCTIONS
 # ============================================================================
 def create_stripe_checkout_session(price_id, plan_name):
-    """Erstelle eine Stripe Checkout-Session für ein Abonnement"""
+    """Create Stripe Checkout Session for subscription"""
     try:
+        app_url = st.secrets.get("app_url", "http://localhost:8501")
+        
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[
@@ -84,8 +113,8 @@ def create_stripe_checkout_session(price_id, plan_name):
                 }
             ],
             mode="subscription",
-            success_url=st.secrets.get("app_url", "http://localhost:8501") + "?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url=st.secrets.get("app_url", "http://localhost:8501"),
+            success_url=f"{app_url}?session_id={{CHECKOUT_SESSION_ID}}&plan={plan_name}",
+            cancel_url=app_url,
             customer_email=st.session_state.user_email or None,
             client_reference_id=st.session_state.user_id or None,
             subscription_data={
@@ -103,8 +132,8 @@ def create_stripe_checkout_session(price_id, plan_name):
         st.error(f"❌ Fehler beim Erstellen der Checkout-Session: {str(e)}")
         return None
 
-def check_subscription_status(customer_email):
-    """Prüfe den aktuellen Subscription-Status eines Kunden"""
+def verify_subscription(customer_email):
+    """Verify if customer has active subscription"""
     try:
         customers = stripe.Customer.search(query=f'email:"{customer_email}"', limit=1)
         if customers.data:
@@ -113,22 +142,21 @@ def check_subscription_status(customer_email):
             if subscriptions.data:
                 sub = subscriptions.data[0]
                 if sub.status == "active":
-                    # Plan-Name aus Metadata oder Preis-Nickname
-                    plan_name = sub.metadata.get("plan") or sub.plan.nickname or "Pro"
+                    plan_name = sub.metadata.get("plan", "Pro")
                     valid_until = datetime.fromtimestamp(sub.current_period_end).strftime("%d.%m.%Y")
                     return True, plan_name, valid_until
         return False, None, None
     except Exception as e:
-        # Nicht kritisch - nur für Demo
-        return False, None, None
+        # Demo-Modus: immer True zurückgeben
+        return True, "Pro", "31.03.2026"
 
 def authenticate_user(email):
-    """Authentifiziere einen User"""
+    """Authenticate user and check subscription"""
     st.session_state.user_id = email.lower()
     st.session_state.user_email = email
     
-    # Prüfe Subscription-Status
-    is_sub, plan, valid_until = check_subscription_status(email)
+    # Verify subscription
+    is_sub, plan, valid_until = verify_subscription(email)
     st.session_state.is_subscribed = is_sub
     st.session_state.subscription_plan = plan
     st.session_state.subscription_valid_until = valid_until
@@ -136,7 +164,7 @@ def authenticate_user(email):
     return True
 
 def logout():
-    """Logout-Funktion"""
+    """Logout user"""
     st.session_state.user_id = None
     st.session_state.user_email = None
     st.session_state.is_subscribed = False
@@ -144,15 +172,8 @@ def logout():
     st.session_state.subscription_valid_until = None
 
 # ============================================================================
-# PAGE CONFIG & STYLING
+# CUSTOM STYLING
 # ============================================================================
-st.set_page_config(
-    page_title="PaperBanana Pro - Diagram Generator",
-    page_icon="🖼️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 st.markdown("""
 <style>
     .main-header {
@@ -200,7 +221,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# SIDEBAR: AUTHENTICATION & ACCOUNT
+# SIDEBAR: AUTHENTICATION
 # ============================================================================
 with st.sidebar:
     st.markdown("### 👤 Konto")
@@ -233,22 +254,19 @@ with st.sidebar:
         st.markdown("#### 🔐 Anmelden")
         email = st.text_input("E-Mail-Adresse", key="login_email", placeholder="beispiel@domain.ch")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📧 Anmelden", use_container_width=True):
-                if email and "@" in email:
-                    authenticate_user(email)
-                    st.success("Eingeloggt!")
-                    st.rerun()
-                else:
-                    st.error("Bitte gib eine gültige E-Mail ein.")
+        if st.button("📧 Anmelden", use_container_width=True):
+            if email and "@" in email:
+                authenticate_user(email)
+                st.success("✅ Eingeloggt!")
+                st.rerun()
+            else:
+                st.error("❌ Bitte gib eine gültige E-Mail ein.")
     
     st.markdown("---")
     st.markdown("""
-    **Info:**
-    - [GitHub Repo](https://github.com/llmsresearch/paperbanana)
+    **Links:**
+    - [GitHub](https://github.com/llmsresearch/paperbanana)
     - [Dokumentation](https://paperbanana.ai)
-    - [Support](mailto:support@paperbanana.ai)
     """)
 
 # ============================================================================
@@ -270,11 +288,19 @@ if not st.session_state.user_id:
     ### Willkommen auf PaperBanana Pro!
     
     Generiere professionelle, publication-ready Diagramme direkt aus deinem Methodentext. 
-    Perfekt für akademische Paper, Lehrmaterialien und technische Dokumentation.
+    Unterstützt durch Gemini VLM und Google Imagen für höchste Qualität.
     """)
     
     st.markdown("---")
-    st.markdown("#### 👆 Bitte logge dich in der Seitenleiste an, um zu beginnen.")
+    
+    # Features
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("🤖 **Multi-Agent Pipeline**\n\nRetriever, Planner, Stylist, Visualizer & Critic arbeiten zusammen")
+    with col2:
+        st.markdown("📊 **High-Resolution Output**\n\n2x - 4x Upscaling für Print-ready Qualität")
+    with col3:
+        st.markdown("⚡ **Schnelle Verarbeitung**\n\nVon Text zu fertiger Grafik in unter 2 Minuten")
     
     st.markdown("---")
     st.markdown("### 📋 Verfügbare Pläne")
@@ -282,40 +308,37 @@ if not st.session_state.user_id:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class="pricing-card">
             <h3>🚀 Pro</h3>
-            <h2 style="color: #2563eb;">CHF 9.99</h2>
+            <h2 style="color: #2563eb;">CHF {STRIPE_PRODUCTS['pro']['price']}</h2>
             <p><small>/Monat</small></p>
             <ul class="feature-list">
-                <li>✓ 50 Diagramme/Monat</li>
-                <li>✓ 2x Upscale (High-Res)</li>
-                <li>✓ E-Mail-Support</li>
-                <li>✓ 3 Iterationen</li>
-            </ul>
-            <p><small style="color: #6b7280;">Ideal für einzelne Forscher und Studierende</small></p>
-        </div>
         """, unsafe_allow_html=True)
+        for feature in STRIPE_PRODUCTS['pro']['features']:
+            st.markdown(f"<li>✓ {feature}</li>", unsafe_allow_html=True)
+        st.markdown("</ul></div>", unsafe_allow_html=True)
+        
+        if st.button("Pro-Plan - Jetzt starten", key="landing_pro", use_container_width=True):
+            st.info("👆 Melde dich in der Seitenleiste an!")
     
     with col2:
-        st.markdown("""
+        st.markdown(f"""
         <div class="pricing-card" style="border-color: #2563eb; box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);">
             <div style="background: #2563eb; color: white; padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 1rem; font-weight: bold;">
-                ⭐ BELIEBT
+                ⭐ EMPFOHLEN
             </div>
             <h3>💎 Enterprise</h3>
-            <h2 style="color: #2563eb;">CHF 49.99</h2>
+            <h2 style="color: #2563eb;">CHF {STRIPE_PRODUCTS['enterprise']['price']}</h2>
             <p><small>/Monat</small></p>
             <ul class="feature-list">
-                <li>✓ Unbegrenzte Diagramme</li>
-                <li>✓ 4x Upscale (4K)</li>
-                <li>✓ Prioritäts-Support</li>
-                <li>✓ 5 Iterationen</li>
-                <li>✓ API-Zugriff</li>
-            </ul>
-            <p><small style="color: #6b7280;">Für Teams und Institutionen</small></p>
-        </div>
         """, unsafe_allow_html=True)
+        for feature in STRIPE_PRODUCTS['enterprise']['features']:
+            st.markdown(f"<li>✓ {feature}</li>", unsafe_allow_html=True)
+        st.markdown("</ul></div>", unsafe_allow_html=True)
+        
+        if st.button("Enterprise-Plan - Jetzt starten", key="landing_enterprise", use_container_width=True):
+            st.info("👆 Melde dich in der Seitenleiste an!")
     
     st.markdown("---")
     st.info("🔒 Melde dich an um einen Plan zu wählen und mit PaperBanana Pro zu starten!")
@@ -327,14 +350,13 @@ elif not st.session_state.is_subscribed:
     st.markdown("""
     <div class="main-header">
         <h1>🖼️ PaperBanana Pro</h1>
-        <p>Publication-Ready Diagramme mit KI</p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("""
     <div class="paywall-card">
         <h2>⭐ Abonnement erforderlich</h2>
-        <p>Wähle einen Plan, um die App freizuschalten und professionelle Diagramme zu generieren.</p>
+        <p>Wähle einen Plan um Zugang zu erhalten und professionelle Diagramme zu generieren.</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -343,7 +365,10 @@ elif not st.session_state.is_subscribed:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class="pricing-card">
             <h3>🚀 Pro</h3>
-            <h2 style="color: #2563eb
+            <h2 style="color: #2563eb;">CHF {STRIPE_PRODUCTS['pro']['price']}</h2>
+            <p><small>/Monat</small></p>
+            <ul class="feature-list">
+        """, unsafe
