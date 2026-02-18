@@ -4,3 +4,4 @@ Pillow==10.1.0
 paperbanana==0.1.2
 google-generativeai
 python-dotenv
+# Trigger rebuild
