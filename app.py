@@ -26,6 +26,7 @@ st.set_page_config(
 # ============================================================================
 stripe.api_key = st.secrets.get("stripe_secret_key") or os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = st.secrets.get("stripe_publishable_key") or os.getenv("STRIPE_PUBLISHABLE_KEY")
+GOOGLE_API_KEY = st.secrets.get("google_api_key") or os.getenv("GOOGLE_API_KEY")
 
 STRIPE_PRODUCTS = {
     "pro": {
